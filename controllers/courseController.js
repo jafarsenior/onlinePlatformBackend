@@ -14,7 +14,14 @@ const parseTopics = (topics) => {
   }
 };
 
-const uploadedPath = (file) => (file?.filename ? `/uploads/${file.filename}` : null);
+const uploadedImage = (file) => {
+  if (!file) return null;
+  if (file.filename) return `/uploads/${file.filename}`;
+  if (file.buffer && file.mimetype?.startsWith("image/")) {
+    return `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+  }
+  return null;
+};
 
 // ─── GET /api/courses ─────────────────────────────────────────
 const getCourses = async (req, res) => {
@@ -98,7 +105,7 @@ const getCategories = async (req, res) => {
 const createCourse = async (req, res) => {
   try {
     const { title, description, category, price, topics, duration, level, videoUrl, teacher } = req.body;
-    const image = uploadedPath(req.file);
+    const image = uploadedImage(req.file);
     const owner = req.user.role === "teacher" ? req.user._id : teacher || null;
 
     const course = await Course.create({
@@ -130,7 +137,7 @@ const updateCourse = async (req, res) => {
 
     const updateData = { ...req.body };
     if (req.body.topics) updateData.topics = parseTopics(req.body.topics);
-    const image = uploadedPath(req.file);
+    const image = uploadedImage(req.file);
     if (image) updateData.image = image;
     if (req.user.role === "teacher") delete updateData.teacher;
 

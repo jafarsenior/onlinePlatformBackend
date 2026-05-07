@@ -1,6 +1,15 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+const uploadedImage = (file) => {
+  if (!file) return null;
+  if (file.filename) return `/uploads/${file.filename}`;
+  if (file.buffer && file.mimetype?.startsWith("image/")) {
+    return `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+  }
+  return null;
+};
+
 // Token yaratish
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -142,9 +151,8 @@ const updateMe = async (req, res) => {
     }
 
     // Avatar yuklangan bo'lsa
-    if (req.file?.filename) {
-      updateData.avatar = `/uploads/${req.file.filename}`;
-    }
+    const avatar = uploadedImage(req.file);
+    if (avatar) updateData.avatar = avatar;
 
     const user = await User.findByIdAndUpdate(req.user._id, updateData, {
       new: true,
