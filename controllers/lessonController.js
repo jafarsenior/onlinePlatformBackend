@@ -1,6 +1,7 @@
 const Lesson = require("../models/Lesson");
 const Enrollment = require("../models/Enrollment");
 const Course = require("../models/Course");
+require("../models/Group");
 
 // ─── GET /api/lessons  (query: groupId, courseId) ─────────────
 const getLessons = async (req, res) => {
@@ -16,6 +17,7 @@ const getLessons = async (req, res) => {
 
     res.json({ success: true, lessons });
   } catch (error) {
+    console.error("Lessons list xatosi:", error);
     res.status(500).json({ success: false, message: "Server xatosi" });
   }
 };
