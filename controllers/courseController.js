@@ -1,5 +1,21 @@
 const Course = require("../models/Course");
 
+const parseTopics = (topics) => {
+  if (!topics) return [];
+  if (Array.isArray(topics)) return topics;
+  try {
+    const parsed = JSON.parse(topics);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_error) {
+    return String(topics)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+};
+
+const uploadedPath = (file) => (file?.filename ? `/uploads/${file.filename}` : null);
+
 // ─── GET /api/courses ─────────────────────────────────────────
 const getCourses = async (req, res) => {
   try {
@@ -82,12 +98,12 @@ const getCategories = async (req, res) => {
 const createCourse = async (req, res) => {
   try {
     const { title, description, category, price, topics, duration, level, videoUrl, teacher } = req.body;
-    const image = req.file ? `/uploads/${req.file.filename}` : null;
+    const image = uploadedPath(req.file);
     const owner = req.user.role === "teacher" ? req.user._id : teacher || null;
 
     const course = await Course.create({
       title, description, category, price,
-      topics: topics ? JSON.parse(topics) : [],
+      topics: parseTopics(topics),
       duration, level, videoUrl, teacher: owner, image,
     });
 
@@ -97,7 +113,7 @@ const createCourse = async (req, res) => {
       const msg = Object.values(error.errors).map((e) => e.message)[0];
       return res.status(400).json({ success: false, message: msg });
     }
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    res.status(500).json({ success: false, message: error.message || "Server xatosi" });
   }
 };
 
@@ -113,8 +129,9 @@ const updateCourse = async (req, res) => {
     }
 
     const updateData = { ...req.body };
-    if (req.body.topics) updateData.topics = JSON.parse(req.body.topics);
-    if (req.file) updateData.image = `/uploads/${req.file.filename}`;
+    if (req.body.topics) updateData.topics = parseTopics(req.body.topics);
+    const image = uploadedPath(req.file);
+    if (image) updateData.image = image;
     if (req.user.role === "teacher") delete updateData.teacher;
 
     const course = await Course.findByIdAndUpdate(req.params.id, updateData, {

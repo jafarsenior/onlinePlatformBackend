@@ -142,7 +142,7 @@ const updateMe = async (req, res) => {
     }
 
     // Avatar yuklangan bo'lsa
-    if (req.file) {
+    if (req.file?.filename) {
       updateData.avatar = `/uploads/${req.file.filename}`;
     }
 
