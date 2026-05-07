@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const morgan = require("morgan");
 require("dotenv").config();
+require("./models");
 
 const app = express();
 const allowedOrigins = [
@@ -24,7 +25,9 @@ async function connectDB() {
     return;
   }
 
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000,
+  });
   isConnected = true;
 
   console.log("MongoDB connected");
@@ -41,6 +44,11 @@ app.use(
 app.use(express.json());
 app.use(morgan("dev"));
 app.use("/uploads", express.static("uploads"));
+
+app.use((req, _res, next) => {
+  req.url = req.url.replace(/\/{2,}/g, "/");
+  next();
+});
 
 app.use(async (_req, res, next) => {
   try {
@@ -64,10 +72,78 @@ app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 app.use("/api/tests", require("./routes/testRoutes"));
 
-app.get("/", (_req, res) => {
+const apiRoutes = {
+  auth: [
+    "POST /api/auth/register",
+    "POST /api/auth/login",
+    "GET /api/auth/me",
+    "PUT /api/auth/me",
+    "PUT /api/auth/change-password",
+  ],
+  courses: [
+    "GET /api/courses",
+    "GET /api/courses/categories",
+    "GET /api/courses/teacher/my",
+    "GET /api/courses/:id",
+    "POST /api/courses",
+    "PUT /api/courses/:id",
+    "DELETE /api/courses/:id",
+  ],
+  groups: [
+    "GET /api/groups",
+    "GET /api/groups/:id",
+    "POST /api/groups",
+    "PUT /api/groups/:id",
+    "DELETE /api/groups/:id",
+  ],
+  lessons: [
+    "GET /api/lessons",
+    "GET /api/lessons/:id",
+    "POST /api/lessons",
+    "PUT /api/lessons/:id",
+    "DELETE /api/lessons/:id",
+    "POST /api/lessons/:id/complete",
+  ],
+  payments: [
+    "POST /api/payments",
+    "GET /api/payments/my",
+    "GET /api/payments/all",
+    "GET /api/payments/:id/status",
+  ],
+  enrollments: [
+    "GET /api/enrollments/my",
+    "GET /api/enrollments/my/:courseId",
+    "GET /api/enrollments/all",
+  ],
+  contact: [
+    "POST /api/contact",
+    "GET /api/contact",
+    "PUT /api/contact/:id",
+  ],
+  admin: [
+    "GET /api/admin/stats",
+    "GET /api/admin/users",
+    "PUT /api/admin/users/:id",
+  ],
+  dashboard: [
+    "GET /api/dashboard/stats",
+    "GET /api/dashboard/courses",
+    "GET /api/dashboard/activities",
+  ],
+  tests: [
+    "GET /api/tests",
+    "GET /api/tests/:id",
+    "POST /api/tests",
+    "PUT /api/tests/:id",
+    "DELETE /api/tests/:id",
+  ],
+};
+
+app.get(["/", "/api"], (_req, res) => {
   res.json({
     success: true,
     message: "API ishlayapti",
+    routes: apiRoutes,
   });
 });
 
