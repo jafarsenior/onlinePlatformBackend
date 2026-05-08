@@ -3,6 +3,26 @@ const Enrollment = require("../models/Enrollment");
 const Course = require("../models/Course");
 require("../models/Group");
 
+const uploadedVideo = (file) => {
+  if (!file) return null;
+  if (file.filename) return `/uploads/videos/${file.filename}`;
+  if (file.buffer && file.mimetype?.startsWith("video/")) {
+    return `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+  }
+  return null;
+};
+
+const parseResources = (resources) => {
+  if (!resources) return [];
+  if (Array.isArray(resources)) return resources;
+  try {
+    const parsed = JSON.parse(resources);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_error) {
+    return [];
+  }
+};
+
 // ─── GET /api/lessons  (query: groupId, courseId) ─────────────
 const getLessons = async (req, res) => {
   try {
@@ -66,6 +86,8 @@ const getLesson = async (req, res) => {
 const createLesson = async (req, res) => {
   try {
     const { lessonNumber, title, content, description, videoUrl, duration, group, course, resources } = req.body;
+    const video = uploadedVideo(req.file);
+
     if (req.user.role === "teacher") {
       const ownedCourse = await Course.findOne({ _id: course, teacher: req.user._id });
       if (!ownedCourse) {
@@ -75,8 +97,9 @@ const createLesson = async (req, res) => {
 
     const lesson = await Lesson.create({
       lessonNumber, title, content, description,
-      videoUrl, duration, group, course,
-      resources: resources ? JSON.parse(resources) : [],
+      videoUrl: video || videoUrl,
+      duration, group: group || null, course,
+      resources: parseResources(resources),
     });
 
     res.status(201).json({ success: true, message: "Dars yaratildi", lesson });
@@ -85,7 +108,7 @@ const createLesson = async (req, res) => {
       const msg = Object.values(error.errors).map((e) => e.message)[0];
       return res.status(400).json({ success: false, message: msg });
     }
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    res.status(500).json({ success: false, message: error.message || "Server xatosi" });
   }
 };
 
@@ -101,7 +124,10 @@ const updateLesson = async (req, res) => {
     }
 
     const updateData = { ...req.body };
-    if (req.body.resources) updateData.resources = JSON.parse(req.body.resources);
+    if (req.body.resources) updateData.resources = parseResources(req.body.resources);
+    const video = uploadedVideo(req.file);
+    if (video) updateData.videoUrl = video;
+    if (!updateData.group) updateData.group = null;
 
     const lesson = await Lesson.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
@@ -110,7 +136,7 @@ const updateLesson = async (req, res) => {
 
     res.json({ success: true, message: "Dars yangilandi", lesson });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    res.status(500).json({ success: false, message: error.message || "Server xatosi" });
   }
 };
 
